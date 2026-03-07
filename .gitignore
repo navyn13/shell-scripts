@@ -1,0 +1,11 @@
+# Excel files
+*.xlsx
+*.xls
+*.xlsm
+*.xlsb
+
+# CSV files
+*.csv
+
+# Optional: ignore entire source data folders if they only contain data
+# source/
