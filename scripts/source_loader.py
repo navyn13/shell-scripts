@@ -33,14 +33,15 @@ def _load_xlsx(path):
             "Reading Excel (.xlsx) requires openpyxl. Install with: pip install openpyxl"
         ) from None
 
+    # Need cell objects (not values_only) to access number_format,
+    # so we can mimic what Excel actually displays to the user.
     wb = load_workbook(path, read_only=True, data_only=True)
     ws = wb.active
     rows = []
-    for row in ws.iter_rows(values_only=True):
-        rows.append([_cell_str(c) for c in row])
+    for row in ws.iter_rows(values_only=False):
+        rows.append([_cell_str(c.value, c.number_format) for c in row])
     wb.close()
 
-    # Pad rows to same length (Excel can have short rows) so column indices work
     if rows:
         max_len = max(len(r) for r in rows)
         for r in rows:
@@ -49,7 +50,73 @@ def _load_xlsx(path):
     return rows
 
 
-def _cell_str(cell):
-    if cell is None:
+def _decimals_from_format(number_format):
+    """
+    Parse the number of decimal places from an Excel number_format string.
+    Returns None if the format does not specify a fixed decimal precision
+    (e.g. 'General', text formats), otherwise an int >= 0.
+
+    Examples:
+        '0'        -> 0   (display as integer)
+        '0.00'     -> 2
+        '#,##0.0'  -> 1
+        '0.000'    -> 3
+        'General'  -> None
+        ''         -> None
+    """
+    if not number_format or number_format.lower() == "general":
+        return None
+
+    # Strip any text/quoted sections that don't affect numeric precision
+    fmt = number_format.split(";")[0]
+
+    if "." not in fmt:
+        # No decimal point in format => Excel displays as an integer
+        if any(c in fmt for c in "0#"):
+            return 0
+        return None
+
+    decimal_part = fmt.split(".", 1)[1]
+    decimals = 0
+    for c in decimal_part:
+        if c in "0#":
+            decimals += 1
+        elif c in ",":
+            continue
+        else:
+            break
+    return decimals
+
+
+def _cell_str(value, number_format="General"):
+    """
+    Convert an Excel cell value to a clean string, applying the cell's
+    displayed number format so the output matches what Excel shows.
+
+    - None  -> ""
+    - str   -> stripped string
+    - int   -> str(int)
+    - float -> formatted per number_format:
+        * format '0'    -> rounded integer (e.g. 2776.657 -> '2777')
+        * format '0.00' -> rounded to 2 decimals
+        * 'General' or no precision -> preserve full value (drop trailing .0)
+    """
+    if value is None:
         return ""
-    return str(cell).strip() if isinstance(cell, str) else str(cell)
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        decimals = _decimals_from_format(number_format)
+        if decimals is None:
+            # 'General' / unspecified precision: preserve full value
+            return str(int(value)) if value.is_integer() else str(value)
+        rounded = round(value, decimals)
+        if decimals == 0:
+            return str(int(rounded))
+        # Use fixed-precision formatting then strip trailing zeros if not meaningful
+        return f"{rounded:.{decimals}f}"
+    return str(value)

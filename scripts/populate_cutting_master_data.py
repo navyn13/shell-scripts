@@ -101,7 +101,8 @@ def clean_number(val):
         return None
     val = str(val).strip()
     try:
-        return float(val)
+        f = float(val)
+        return int(f) if f.is_integer() else f
     except ValueError:
         return None
 

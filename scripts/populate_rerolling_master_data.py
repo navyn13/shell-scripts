@@ -63,7 +63,8 @@ def clean_number(val):
     if not val:
         return None
     try:
-        return float(val)
+        f = float(val)
+        return int(f) if f.is_integer() else f
     except ValueError:
         return None
 

@@ -115,6 +115,8 @@ def main():
         sys.exit(1)
 
     jobs = [
+        ("populate_incoming_master_data.py", "master_incoming.csv"),
+        ("tolerance_fetcher.py", "master_tolerance.csv"),
         ("populate_bevelling_master_data.py", "master_bevelling.csv"),
         ("populate_rerolling_master_data.py", "master_rerolling.csv"),
         ("populate_rolling_master_data.py", "master_rolling.csv"),

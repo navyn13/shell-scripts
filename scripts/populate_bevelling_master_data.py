@@ -166,12 +166,18 @@ RIGHT_BOT_ROOT_COL  = 60  # Root Face RIGHT BOT (R)     ← was 65 (WRONG — wa
 MIN_COLS = RIGHT_BOT_ROOT_COL + 1  # = 60
 # ──────────────────────────────────────────────────────────────────────────────
 
+def _fmt(f):
+    """Format float so whole numbers don't have trailing .0 (e.g. 30.0 -> 30)."""
+    if f is None:
+        return None
+    return int(f) if float(f).is_integer() else f
+
 def clean_angle(val):
     if not val:
         return None
     val = str(val).strip().replace("°", "")
     try:
-        return float(val)
+        return _fmt(float(val))
     except ValueError:
         return None
 
@@ -180,7 +186,7 @@ def clean_number(val):
         return None
     val = str(val).strip()
     try:
-        return float(val)
+        return _fmt(float(val))
     except ValueError:
         return None
 
