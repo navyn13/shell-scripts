@@ -34,7 +34,7 @@ Column mapping (0-indexed, based on actual Excel layout):
     col[23] = Thickness Tol Lower
     col[24] = Thickness Tol Upper
     col[25] = Diagonal Tol Lower
-    col[26] = Diagonal Tol Upper (M2 - second diagonal measurement)
+    col[26] = Diagonal Tol Upper (unused for master_data; M2 uses same value as M1 from col[19])
 """
 
 import csv
@@ -73,8 +73,6 @@ CSV_KEY_TO_FIELD_ID = {
     "diagonal_r1_m1": "e1149430-be3e-44d0-9f1e-e9ba11290c00", # Diagonal 1
     "diagonal_r1_m2": "f64cb558-8a12-49b2-a8ec-8bd1989c8317", # Diagonal 2
     # R2 row
-    "length_r2_e": "f559beda-5c3e-4434-9cfd-e66fefc9805a",
-    "length_r2_f": "d8888075-557a-4e32-bac4-1012b22aa5e8",
     "width_r2_j":  "09735608-fe51-4078-a422-85e9013411db",
     # R3 row
     "width_r3_j":  "e635b0cf-ab03-4d8b-b3fa-def40be1cbe7",
@@ -92,8 +90,7 @@ COL_F           = 15  # Top Length          ← was 18 (WRONG)
 COL_G           = 16  # Width Left          ← NEW (was missing)
 COL_J           = 17  # Width Right         ← was 20 (WRONG)
 COL_THICKNESS   = 18  # Thickness
-COL_M1          = 19  # Diagonal 1          ← was 22 (WRONG — that col is "+3")
-COL_M2          = 26  # Diagonal 2 (second diagonal value at end of EN10029 block)
+COL_M1          = 19  # Diagonal (M1 and M2 both use this column)
 # ──────────────────────────────────────────────────────────────────────────────
 
 def clean_number(val):
@@ -123,15 +120,14 @@ def parse_csv_data(csv_path):
             "col_G(15)": r0[COL_G]       if len(r0) > COL_G       else None,
             "col_J(16)": r0[COL_J]       if len(r0) > COL_J       else None,
             "col_T(17)": r0[COL_THICKNESS] if len(r0) > COL_THICKNESS else None,
-            "col_M1(18)":r0[COL_M1]      if len(r0) > COL_M1      else None,
-            "col_M2(26)":r0[COL_M2]      if len(r0) > COL_M2      else None,
+            "col_M1(19)":r0[COL_M1]      if len(r0) > COL_M1      else None,
             "row_len":   len(r0),
             "total_slice_rows": len(slice_rows),
         }, "H1_H2_H3")
 
     for row in slice_rows:
-        # Need at least up to col 26 (M2)
-        if len(row) <= COL_M2:
+        # Need at least up to col 19 (diagonal)
+        if len(row) <= COL_M1:
             continue
 
         section    = row[LS_COL].strip()  # Use LS column for model_id
@@ -149,11 +145,9 @@ def parse_csv_data(csv_path):
             "length_r1_f":    clean_number(get_val(COL_F)),    # Top Length
             "width_r1_j":     clean_number(get_val(COL_J)),    # Width Right
             "diagonal_r1_m1": clean_number(get_val(COL_M1)),   # Diagonal 1
-            "diagonal_r1_m2": clean_number(get_val(COL_M2)),   # Diagonal 2
+            "diagonal_r1_m2": clean_number(get_val(COL_M1)),   # Diagonal 2 (same column as M1)
 
-            # R2 — reuse same measurement columns (same physical measurements, different form rows)
-            "length_r2_e":    clean_number(get_val(COL_E)),
-            "length_r2_f":    clean_number(get_val(COL_F)),
+            # R2 — width only (length_r2_e / length_r2_f excluded from master_data)
             "width_r2_j":     clean_number(get_val(COL_J)),
 
             # R3
