@@ -11,6 +11,7 @@ Column map (0-indexed):
     [2]  LS            (e.g. S1-L1)
     [68] Roundness Upper (+3)   ← was 74 (WRONG — was Travel Speed Lower "23")
     [69] Roundness Lower (0)    ← was 75 (WRONG — was Outside Current Upper "221")
+    [71] WPS No        (e.g. 101-B)
 """
 
 import csv
@@ -24,8 +25,9 @@ from source_loader import load_source_rows
 FORM_TEMPLATE_ID = "6c12d436-d583-45cb-bdcc-d511716ee70b"
 
 FIELD_MAPPING = {
-    "roundness_top":    "46cf5a34-cf38-4c7d-8116-c93df2d57607",  # Roundness(0-3mm) Top Side
-    "roundness_bottom": "a704e351-aea7-4715-a195-8a2760e66ad2",  # Roundness(0-3mm) Bottom Side
+    "roundness_top":          "46cf5a34-cf38-4c7d-8116-c93df2d57607",  # Roundness(0-3mm) Top Side
+    "roundness_bottom":       "a704e351-aea7-4715-a195-8a2760e66ad2",  # Roundness(0-3mm) Bottom Side
+    "applicable_wps_number":  "3e9ad37c-c0cb-49a8-af4a-ed1501d26887",  # Applicable WPS Number
 }
 
 # ── Correct column indices (0-based) ──────────────────────────────────────────
@@ -33,8 +35,9 @@ SECTION_COL         = 2   # Section e.g. S1
 LS_COL              = 3   # LS e.g. S1-L1
 ROUNDNESS_UPPER_COL = 69  # Roundness Upper     ← was 74 (WRONG — was "23" Travel Speed)
 ROUNDNESS_LOWER_COL = 70  # Roundness Lower     ← was 75 (WRONG — was "221" Outside Current)
+WPS_NO_COL            = 71  # WPS No             (e.g. 101-B)
 
-MIN_COLS = ROUNDNESS_LOWER_COL + 1  # = 70
+MIN_COLS = WPS_NO_COL + 1  # = 72
 # ──────────────────────────────────────────────────────────────────────────────
 
 def extract_roundness_value(val):
@@ -64,6 +67,7 @@ def parse_csv_data(csv_path):
 
         r_upper_raw = row[ROUNDNESS_UPPER_COL] if len(row) > ROUNDNESS_UPPER_COL else ""
         r_lower_raw = row[ROUNDNESS_LOWER_COL] if len(row) > ROUNDNESS_LOWER_COL else ""
+        wps_no_raw  = row[WPS_NO_COL].strip() if len(row) > WPS_NO_COL else ""
 
         roundness_top = extract_roundness_value(r_upper_raw)
 
@@ -73,8 +77,9 @@ def parse_csv_data(csv_path):
             roundness_bottom = 3
 
         data_rows.append((section, shell_code, {
-            "roundness_top":    roundness_top,
-            "roundness_bottom": roundness_bottom,
+            "roundness_top":          roundness_top,
+            "roundness_bottom":       roundness_bottom,
+            "applicable_wps_number":  wps_no_raw or None,
         }))
 
     return data_rows
@@ -83,7 +88,7 @@ def generate_records(parsed_data):
     records = []
     for model_id, shell_code, data in parsed_data:
         for key, value in data.items():
-            if value is None:
+            if value is None or value == "":
                 continue
             field_id = FIELD_MAPPING.get(key)
             if not field_id:
