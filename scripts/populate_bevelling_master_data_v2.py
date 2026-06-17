@@ -1,0 +1,237 @@
+#!/usr/bin/env python3
+"""
+Bevelling master data v2 — maps form fields to the Bay-4 Master Data Excel layout.
+
+Source: Envision 3x_140HH 353MT (CleanMax 353MT Model) Bay-4 Master Data.xlsx
+        (and other files using the same header structure)
+
+Usage:
+    python3 populate_bevelling_master_data_v2.py <xlsx_or_csv> [output.csv] <model_id>
+
+Column map (0-indexed) from Excel row 4/5 headers:
+    [2]  Section
+    [3]  LS (shell code)
+
+    --- Plate Bevelling (A & C Side) ---
+    [28] Top Bevel Degree (C) = Top Bevel Degree (A)   (shared column)
+    [31] Bevel Distance (C) — Top
+    [32] Bevel Distance (C) — Bottom
+    [33] Bottom Bevel Degree (A) = Bottom Bevel Degree (C)  (shared column)
+    [36] Bevel Distance (A) — Top
+    [37] Bevel Distance (A) — Bottom
+    [40] Root face (A&C)
+
+    --- Plate Bevelling Left Side (B Side) ---
+    [43] Top/Bottom Bevel Degree (B)
+    [46] Bevel Distance (B) — Top
+    [47] Bevel Distance (B) — Bottom
+    [50] Root Face (B)
+
+    --- Plate Bevelling Right Side (D Side) ---
+    [53] Top/Bottom Bevel Degree (D)
+    [56] Bevel Distance (D) — Top
+    [57] Bevel Distance (D) — Bottom
+    [60] Root Face (D)
+
+Data rows start at row index 6 (after 6 header rows).
+"""
+
+import csv
+import sys
+from pathlib import Path
+
+from source_loader import load_source_rows
+
+FORM_TEMPLATE_ID = "564b7379-a7b8-4391-99f8-bd9b8c213d8d"
+
+CSV_KEY_TO_FIELD_ID = {
+    "side_a_top_bevel_degree":    "4a6c3dbe-9164-4560-9a51-b2ab52faca39",
+    "side_a_top_bevel_distance":  "06ee05fc-c500-4e04-8a9f-20dc1520161d",
+    "side_a_bot_bevel_degree":    "c12ad342-cc2d-4499-b984-94a9c3cf9700",
+    "side_a_bot_bevel_distance":  "e5e46315-0341-4a26-92a6-539c6756796b",
+    "side_a_root_face":           "280912a0-d088-4305-b981-3eab9bd1c0f7",
+    "side_b_top_bevel_degree":    "79e305f5-4ee2-4fff-8cb2-d422eed1be5a",
+    "side_b_top_bevel_distance":  "4cd0cd7e-bdf0-416f-a49a-924f9d4f526f",
+    "side_b_bot_bevel_degree":    "d1e771b4-4669-493b-b353-f39f3fa6e4e2",
+    "side_b_bot_bevel_distance":  "2a103359-ff4e-4051-a829-25e6b8027fbc",
+    "side_b_root_face":           "eea2a3a6-3e98-4b2f-8765-58e073af7945",
+    "side_c_top_bevel_degree":    "c8a0400f-f581-46fb-ab10-83e495d815ac",
+    "side_c_top_bevel_distance":  "5fbd1e85-bf89-4931-ae4e-d9f4e427e11a",
+    "side_c_bot_bevel_degree":    "4c728c4a-799d-40b0-b729-d155be58f8d9",
+    "side_c_bot_bevel_distance":  "4b82d209-f62d-4680-a555-5c01c0116641",
+    "side_c_root_face":           "496fdb55-28eb-481e-92de-e12ae193ee26",
+    "side_d_top_bevel_degree":    "531d271f-e359-4963-bee4-6d646bb06919",
+    "side_d_top_bevel_distance":  "6fe4f846-2156-4b98-82cb-9c55886b6a18",
+    "side_d_bot_bevel_degree":    "e71a8af6-4286-42d7-a2ab-175cb893cdfe",
+    "side_d_bot_bevel_distance":  "8e140569-e29f-4007-bee9-31e17976efa3",
+    "side_d_root_face":           "f2d59e71-04f3-454d-8720-af6bc3089d29",
+}
+
+LS_COL = 3
+DATA_START_ROW = 6
+
+# Plate Bevelling (A & C Side)
+AC_TOP_ANGLE_COL = 28   # Top Bevel Degree (C) and Top Bevel Degree (A)
+AC_BOT_ANGLE_COL = 33   # Bottom Bevel Degree (A) and Bottom Bevel Degree (C)
+C_TOP_DIST_TOP_COL = 31
+C_TOP_DIST_BOT_COL = 32
+A_BOT_DIST_TOP_COL = 36
+A_BOT_DIST_BOT_COL = 37
+AC_ROOT_FACE_COL = 40
+
+# Plate Bevelling Left Side (B Side)
+B_ANGLE_COL = 43
+B_DIST_TOP_COL = 46
+B_DIST_BOT_COL = 47
+B_ROOT_FACE_COL = 50
+
+# Plate Bevelling Right Side (D Side)
+D_ANGLE_COL = 53
+D_DIST_TOP_COL = 56
+D_DIST_BOT_COL = 57
+D_ROOT_FACE_COL = 60
+
+MIN_COLS = D_ROOT_FACE_COL + 1
+
+
+def _fmt(value):
+    if value is None:
+        return None
+    return int(value) if float(value).is_integer() else value
+
+
+def clean_angle(val):
+    if not val:
+        return None
+    val = str(val).strip().replace("°", "")
+    try:
+        return _fmt(float(val))
+    except ValueError:
+        return None
+
+
+def clean_number(val):
+    if not val:
+        return None
+    val = str(val).strip()
+    try:
+        return _fmt(float(val))
+    except ValueError:
+        return None
+
+
+def parse_source_data(source_path):
+    rows = load_source_rows(source_path)
+    data_rows = []
+
+    for row in rows[DATA_START_ROW:]:
+        if len(row) < MIN_COLS:
+            continue
+
+        shell_code = row[LS_COL].strip()
+        if not shell_code:
+            continue
+
+        def col(idx):
+            return row[idx] if len(row) > idx else None
+
+        bevelling_data = {
+            # Side A — A&C edge (top/bottom angles share cols 28 and 33)
+            "side_a_top_bevel_degree":   clean_angle(col(AC_TOP_ANGLE_COL)),
+            "side_a_top_bevel_distance": clean_number(col(A_BOT_DIST_TOP_COL)),
+            "side_a_bot_bevel_degree":   clean_angle(col(AC_BOT_ANGLE_COL)),
+            "side_a_bot_bevel_distance": clean_number(col(A_BOT_DIST_BOT_COL)),
+            "side_a_root_face":          clean_number(col(AC_ROOT_FACE_COL)),
+
+            # Side B — left / B side
+            "side_b_top_bevel_degree":   clean_angle(col(B_ANGLE_COL)),
+            "side_b_top_bevel_distance": clean_number(col(B_DIST_TOP_COL)),
+            "side_b_bot_bevel_degree":   clean_angle(col(B_ANGLE_COL)),
+            "side_b_bot_bevel_distance": clean_number(col(B_DIST_BOT_COL)),
+            "side_b_root_face":          clean_number(col(B_ROOT_FACE_COL)),
+
+            # Side C — A&C edge (same angle columns as side A)
+            "side_c_top_bevel_degree":   clean_angle(col(AC_TOP_ANGLE_COL)),
+            "side_c_top_bevel_distance": clean_number(col(C_TOP_DIST_TOP_COL)),
+            "side_c_bot_bevel_degree":   clean_angle(col(AC_BOT_ANGLE_COL)),
+            "side_c_bot_bevel_distance": clean_number(col(C_TOP_DIST_BOT_COL)),
+            "side_c_root_face":          clean_number(col(AC_ROOT_FACE_COL)),
+
+            # Side D — right / D side
+            "side_d_top_bevel_degree":   clean_angle(col(D_ANGLE_COL)),
+            "side_d_top_bevel_distance": clean_number(col(D_DIST_TOP_COL)),
+            "side_d_bot_bevel_degree":   clean_angle(col(D_ANGLE_COL)),
+            "side_d_bot_bevel_distance": clean_number(col(D_DIST_BOT_COL)),
+            "side_d_root_face":          clean_number(col(D_ROOT_FACE_COL)),
+        }
+
+        data_rows.append((shell_code, bevelling_data))
+
+    return data_rows
+
+
+def generate_master_data(parsed_rows, model_id):
+    records = []
+    for shell_code, bevelling_data in parsed_rows:
+        for csv_key, value in bevelling_data.items():
+            if value is None:
+                continue
+            field_id = CSV_KEY_TO_FIELD_ID.get(csv_key)
+            if not field_id:
+                continue
+            records.append({
+                "form_template_id": FORM_TEMPLATE_ID,
+                "form_field_id":    field_id,
+                "model_id":         model_id,
+                "code":             shell_code,
+                "value":            str(value),
+                "is_image":         "false",
+            })
+    return records
+
+
+def main():
+    if len(sys.argv) < 3:
+        print("Usage: python3 populate_bevelling_master_data_v2.py <xlsx_or_csv> [output.csv] <model_id>")
+        sys.exit(1)
+
+    source_path = Path(sys.argv[1])
+    if not source_path.exists():
+        print(f"Error: source file not found at {source_path}")
+        sys.exit(1)
+
+    cli_model_id = sys.argv[-1].strip()
+    if not cli_model_id:
+        print("Error: model_id is required.")
+        sys.exit(1)
+
+    print(f"Parsing {source_path.name} (bevelling v2)...")
+    parsed_rows = parse_source_data(source_path)
+    if not parsed_rows:
+        print("Warning: No bevelling data found.")
+        sys.exit(1)
+
+    records = generate_master_data(parsed_rows, cli_model_id)
+    print(f"Found {len(parsed_rows)} shell rows, generated {len(records)} master_data records")
+
+    headers = ["form_template_id", "form_field_id", "model_id", "code", "value", "is_image"]
+    output_path = sys.stdout
+    if len(sys.argv) > 3:
+        out = Path(sys.argv[2])
+        out.parent.mkdir(parents=True, exist_ok=True)
+        print(f"Saving to {out}...")
+        output_path = open(out, "w", encoding="utf-8", newline="")
+
+    try:
+        writer = csv.DictWriter(output_path, fieldnames=headers)
+        writer.writeheader()
+        writer.writerows(records)
+        if output_path is not sys.stdout:
+            print("Done.")
+    finally:
+        if output_path is not sys.stdout:
+            output_path.close()
+
+
+if __name__ == "__main__":
+    main()
