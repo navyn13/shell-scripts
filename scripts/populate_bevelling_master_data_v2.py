@@ -13,25 +13,25 @@ Column map (0-indexed) from Excel row 4/5 headers:
     [3]  LS (shell code)
 
     --- Plate Bevelling (A & C Side) ---
-    [28] Top Bevel Degree (C) = Top Bevel Degree (A)   (shared column)
-    [31] Bevel Distance (C) — Top
-    [32] Bevel Distance (C) — Bottom
-    [33] Bottom Bevel Degree (A) = Bottom Bevel Degree (C)  (shared column)
-    [36] Bevel Distance (A) — Top
-    [37] Bevel Distance (A) — Bottom
-    [40] Root face (A&C)
+    [28] Top Bevel Degree (C)
+    [29] Top Bevel Degree (A)
+    [32] Bevel Distance (A&C) — Top
+    [33] Bevel Distance (A&C) — Bottom
+    [34] Bottom Bevel Degree (A)
+    [35] Bottom Bevel Degree (C)
+    [42] Root face (A&C)
 
     --- Plate Bevelling Left Side (B Side) ---
-    [43] Top/Bottom Bevel Degree (B)
-    [46] Bevel Distance (B) — Top
-    [47] Bevel Distance (B) — Bottom
-    [50] Root Face (B)
+    [45] Top/Bottom Bevel Degree (B)
+    [48] Bevel Distance (B) — Top
+    [49] Bevel Distance (B) — Bottom
+    [52] Root Face (B)
 
     --- Plate Bevelling Right Side (D Side) ---
-    [53] Top/Bottom Bevel Degree (D)
-    [56] Bevel Distance (D) — Top
-    [57] Bevel Distance (D) — Bottom
-    [60] Root Face (D)
+    [55] Top/Bottom Bevel Degree (D)
+    [58] Bevel Distance (D) — Top
+    [59] Bevel Distance (D) — Bottom
+    [62] Root Face (D)
 
 Data rows start at row index 6 (after 6 header rows).
 """
@@ -71,25 +71,25 @@ LS_COL = 3
 DATA_START_ROW = 6
 
 # Plate Bevelling (A & C Side)
-AC_TOP_ANGLE_COL = 28   # Top Bevel Degree (C) and Top Bevel Degree (A)
-AC_BOT_ANGLE_COL = 33   # Bottom Bevel Degree (A) and Bottom Bevel Degree (C)
-C_TOP_DIST_TOP_COL = 31
-C_TOP_DIST_BOT_COL = 32
-A_BOT_DIST_TOP_COL = 36
-A_BOT_DIST_BOT_COL = 37
-AC_ROOT_FACE_COL = 40
+C_TOP_ANGLE_COL = 28
+A_TOP_ANGLE_COL = 29
+AC_DIST_TOP_COL = 32
+AC_DIST_BOT_COL = 33
+A_BOT_ANGLE_COL = 34
+C_BOT_ANGLE_COL = 35
+AC_ROOT_FACE_COL = 42
 
 # Plate Bevelling Left Side (B Side)
-B_ANGLE_COL = 43
-B_DIST_TOP_COL = 46
-B_DIST_BOT_COL = 47
-B_ROOT_FACE_COL = 50
+B_ANGLE_COL = 45
+B_DIST_TOP_COL = 48
+B_DIST_BOT_COL = 49
+B_ROOT_FACE_COL = 52
 
 # Plate Bevelling Right Side (D Side)
-D_ANGLE_COL = 53
-D_DIST_TOP_COL = 56
-D_DIST_BOT_COL = 57
-D_ROOT_FACE_COL = 60
+D_ANGLE_COL = 55
+D_DIST_TOP_COL = 58
+D_DIST_BOT_COL = 59
+D_ROOT_FACE_COL = 62
 
 MIN_COLS = D_ROOT_FACE_COL + 1
 
@@ -136,11 +136,11 @@ def parse_source_data(source_path):
             return row[idx] if len(row) > idx else None
 
         bevelling_data = {
-            # Side A — A&C edge (top/bottom angles share cols 28 and 33)
-            "side_a_top_bevel_degree":   clean_angle(col(AC_TOP_ANGLE_COL)),
-            "side_a_top_bevel_distance": clean_number(col(A_BOT_DIST_TOP_COL)),
-            "side_a_bot_bevel_degree":   clean_angle(col(AC_BOT_ANGLE_COL)),
-            "side_a_bot_bevel_distance": clean_number(col(A_BOT_DIST_BOT_COL)),
+            # Side A — its own angle columns, shared A&C distance/root face columns
+            "side_a_top_bevel_degree":   clean_angle(col(A_TOP_ANGLE_COL)),
+            "side_a_top_bevel_distance": clean_number(col(AC_DIST_TOP_COL)),
+            "side_a_bot_bevel_degree":   clean_angle(col(A_BOT_ANGLE_COL)),
+            "side_a_bot_bevel_distance": clean_number(col(AC_DIST_BOT_COL)),
             "side_a_root_face":          clean_number(col(AC_ROOT_FACE_COL)),
 
             # Side B — left / B side
@@ -150,11 +150,11 @@ def parse_source_data(source_path):
             "side_b_bot_bevel_distance": clean_number(col(B_DIST_BOT_COL)),
             "side_b_root_face":          clean_number(col(B_ROOT_FACE_COL)),
 
-            # Side C — A&C edge (same angle columns as side A)
-            "side_c_top_bevel_degree":   clean_angle(col(AC_TOP_ANGLE_COL)),
-            "side_c_top_bevel_distance": clean_number(col(C_TOP_DIST_TOP_COL)),
-            "side_c_bot_bevel_degree":   clean_angle(col(AC_BOT_ANGLE_COL)),
-            "side_c_bot_bevel_distance": clean_number(col(C_TOP_DIST_BOT_COL)),
+            # Side C — its own angle columns, shared A&C distance/root face columns
+            "side_c_top_bevel_degree":   clean_angle(col(C_TOP_ANGLE_COL)),
+            "side_c_top_bevel_distance": clean_number(col(AC_DIST_TOP_COL)),
+            "side_c_bot_bevel_degree":   clean_angle(col(C_BOT_ANGLE_COL)),
+            "side_c_bot_bevel_distance": clean_number(col(AC_DIST_BOT_COL)),
             "side_c_root_face":          clean_number(col(AC_ROOT_FACE_COL)),
 
             # Side D — right / D side
