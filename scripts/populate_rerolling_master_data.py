@@ -3,6 +3,9 @@
 Script to populate Re-Rolling Inspection master_data from CSV.
 Output: CSV format.
 
+Same source columns / field names as Rolling; new form field IDs
+(recreated on the Re-Rolling form).
+
 Usage:
     python3 populate_rerolling_master_data.py <csv_file> [output.csv] <model_id>
 
@@ -25,14 +28,17 @@ from pathlib import Path
 
 from source_loader import load_source_rows
 
-# CONFIGURATION
+# CONFIGURATION — original Re-Rolling form template id
 FORM_TEMPLATE_ID = "1e05080b-c680-47ab-b438-c5e81a3efc7e"
 
 FIELD_MAPPING = {
-    "roundness_top":        "62f7c8b0-5651-4d13-bde6-2ccfc0618349",  # Roundness (0-3mm) Top Side
-    "roundness_bottom":     "05ed134c-9ee3-44ea-b5c2-4ab235e7193c",  # Roundness (0-3mm) Bottom Side
-    "circumference_top":    "43f0a676-67f1-4a91-ace2-c9f2927e6f62",  # Circumference (± 6 mm) Top
-    "circumference_bottom": "06c8efaf-7d23-4b40-9a56-e860973d20c5",  # Circumference (± 6 mm) Bottom
+    "roundness_top":        "31c72c4e-517f-4f77-9d20-8093bfb8aa95",  # Roundness (0-3mm) Top Side
+    "roundness_bottom":     "6ae5889b-b6a2-4add-996c-a51221d7c74c",  # Roundness (0-3mm) Bottom Side
+    "circumference_top":    "07019da5-a8cd-4107-be64-5c6f85617ec3",  # Circumference (± 6 mm) Top
+    "circumference_bottom": "0258f2af-37a6-46ab-b59e-ce616bd1b34d",  # Circumference (± 6 mm) Bottom
+    # Peak fields exist on the form but have no matching columns yet:
+    # "peak_in":  "1ee76da5-767d-42e8-8505-eb56e38881ba",
+    # "peak_out": "470906e7-4d47-4927-aafd-6eb730ddc94f",
 }
 
 # ── Correct column indices (0-based) ──────────────────────────────────────────
