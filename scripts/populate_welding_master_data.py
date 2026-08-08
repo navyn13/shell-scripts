@@ -38,6 +38,8 @@ Full weld column map (0-indexed):
 
 import csv
 import sys
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from source_loader import load_source_rows
@@ -47,6 +49,7 @@ FORM_TEMPLATE_ID = "741b50ea-a02d-412d-8d68-f4acc1efab8d"
 
 FIELD_MAPPING = {
     # OUTSIDE WELD (SAW) -> Passes 1, 2, 3
+    "wps_no": ["6cb38a91-2b53-495e-92ec-d645d50f8f33"],
     "saw_current": [
         "8d347b10-5cc2-48e5-8451-6897a1d6ae48",  # Outside Pass 1 - Amp DC
         "ef4aeb7b-bebc-4e8a-a0b5-aeac0da7087e",  # Outside Pass 2 - Amp DC
@@ -97,31 +100,32 @@ FIELD_MAPPING = {
 SECTION_COL = 2   # Section e.g. S1
 LS_COL      = 3   # LS e.g. S1-L1
 
-# Tack & Root Weld  (cols 71-77)
-TR_CURR_UPPER  = 72   # Current Upper
-TR_CURR_LOWER  = 73   # Current Lower
-TR_VOLT_UPPER  = 74   # Voltage Upper
-TR_VOLT_LOWER  = 75   # Voltage Lower
-TR_SPEED_UPPER = 76   # Travel Speed Upper
-TR_SPEED_LOWER = 77   # Travel Speed Lower
+# Tack & Root Weld  (cols 73-79)
+WPS_NO = 73
+TR_CURR_LOWER  = 74   # Current Lower
+TR_CURR_UPPER  = 75   # Current Upper
+TR_VOLT_LOWER  = 76   # Voltage Lower
+TR_VOLT_UPPER  = 77   # Voltage Upper
+TR_SPEED_LOWER = 78   # Travel Speed Lower
+TR_SPEED_UPPER = 79   # Travel Speed Upper
 
 # Outside Weld / SAW
-SAW_CURR_UPPER  = 78
-SAW_CURR_LOWER  = 79
-SAW_VOLT_UPPER  = 80
-SAW_VOLT_LOWER  = 81
-SAW_SPEED_UPPER = 82
-SAW_SPEED_LOWER = 83
+SAW_CURR_LOWER  = 80
+SAW_CURR_UPPER  = 81
+SAW_VOLT_LOWER  = 82
+SAW_VOLT_UPPER  = 83
+SAW_SPEED_LOWER = 84
+SAW_SPEED_UPPER = 85
 
 # Inside Weld
-IN_CURR_UPPER  = 84
-IN_CURR_LOWER  = 85
-IN_VOLT_UPPER  = 86
-IN_VOLT_LOWER  = 87
-IN_SPEED_UPPER = 88
-IN_SPEED_LOWER = 89
+IN_CURR_LOWER  = 86
+IN_CURR_UPPER  = 87
+IN_VOLT_LOWER  = 88
+IN_VOLT_UPPER  = 89
+IN_SPEED_LOWER = 90
+IN_SPEED_UPPER = 91
 
-MIN_COLS = IN_SPEED_LOWER + 1  # = 90
+MIN_COLS = IN_SPEED_UPPER + 1  # = 92
 # ──────────────────────────────────────────────────────────────────────────────
 
 def parse_csv_data(csv_path):
@@ -146,6 +150,7 @@ def parse_csv_data(csv_path):
             return f"{u}-{l}" if u and l else ""
 
         row_data = {
+            "wps_no":            get_val(WPS_NO),
             "tack_root_current": fmt(TR_CURR_UPPER,  TR_CURR_LOWER),
             "tack_root_voltage": fmt(TR_VOLT_UPPER,  TR_VOLT_LOWER),
             "tack_root_speed":   fmt(TR_SPEED_UPPER, TR_SPEED_LOWER),
@@ -162,6 +167,7 @@ def parse_csv_data(csv_path):
     return data_rows
 
 def generate_records(parsed_data):
+    now = datetime.now(timezone.utc).isoformat()
     records = []
     for model_id, shell_code, data in parsed_data:
         for key, value in data.items():
@@ -172,11 +178,14 @@ def generate_records(parsed_data):
                 continue
             for field_id in field_ids:
                 records.append({
+                    "id":               str(uuid.uuid4()),
                     "form_template_id": FORM_TEMPLATE_ID,
                     "form_field_id":    field_id,
                     "model_id":         model_id,
                     "code":             shell_code,
                     "value":            str(value),
+                    "created_at":       now,
+                    "updated_at":       now,
                     "is_image":         "false"
                 })
     return records
@@ -202,7 +211,7 @@ def main():
     records = generate_records(parsed_data)
     print(f"Generated {len(records)} records.")
 
-    headers = ["form_template_id", "form_field_id", "model_id", "code", "value", "is_image"]
+    headers = ["id", "form_template_id", "form_field_id", "model_id", "value", "created_at", "updated_at", "code", "is_image"]
 
     output_file = sys.stdout
     if len(sys.argv) > 3:

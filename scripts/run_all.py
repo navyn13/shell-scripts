@@ -28,7 +28,7 @@ def combine_csvs(output_files, final_output_path):
     """Merges multiple CSV files into one, preserving the header."""
     if not output_files:
         return
-    headers = ["form_template_id", "form_field_id", "model_id", "code", "value", "is_image"]
+    headers = ["id", "form_template_id", "form_field_id", "model_id", "value", "created_at", "updated_at", "code", "is_image"]
     combined_records = []
     for file_path in output_files:
         if not file_path.exists():

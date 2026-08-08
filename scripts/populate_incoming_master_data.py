@@ -18,6 +18,8 @@ Column map (0-indexed):
 
 import csv
 import sys
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from source_loader import load_source_rows
@@ -90,6 +92,7 @@ def parse_source_data(source_path):
 
 def generate_records(parsed_data, model_id):
     """Convert parsed data into output records."""
+    now = datetime.now(timezone.utc).isoformat()
     records = []
     for ls_code, values in parsed_data:
         for field_name, value in values.items():
@@ -99,11 +102,14 @@ def generate_records(parsed_data, model_id):
             if not field_id:
                 continue
             records.append({
+                "id":               str(uuid.uuid4()),
                 "form_template_id": FORM_TEMPLATE_ID,
                 "form_field_id":    field_id,
                 "model_id":         model_id,
                 "code":             ls_code,
                 "value":            value,
+                "created_at":       now,
+                "updated_at":       now,
                 "is_image":         "false",
             })
     return records
@@ -129,7 +135,7 @@ def main():
     records = generate_records(parsed_data, cli_model_id)
     print(f"Generated {len(records)} records.")
 
-    headers = ["form_template_id", "form_field_id", "model_id", "code", "value", "is_image"]
+    headers = ["id", "form_template_id", "form_field_id", "model_id", "value", "created_at", "updated_at", "code", "is_image"]
 
     output_file = sys.stdout
     if len(sys.argv) > 3:

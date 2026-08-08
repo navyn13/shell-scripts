@@ -24,6 +24,8 @@ Full Shell Rolling column map (0-indexed):
 
 import csv
 import sys
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from source_loader import load_source_rows
@@ -104,6 +106,7 @@ def parse_csv_data(csv_path):
     return data_rows
 
 def generate_records(parsed_data):
+    now = datetime.now(timezone.utc).isoformat()
     records = []
     for model_id, shell_code, data in parsed_data:
         for key, value in data.items():
@@ -115,11 +118,14 @@ def generate_records(parsed_data):
                 continue
 
             records.append({
+                "id":               str(uuid.uuid4()),
                 "form_template_id": FORM_TEMPLATE_ID,
                 "form_field_id":    field_id,
                 "model_id":         model_id,
                 "code":             shell_code,
                 "value":            str(value),
+                "created_at":       now,
+                "updated_at":       now,
                 "is_image":         "false"
             })
     return records
@@ -145,7 +151,7 @@ def main():
     records = generate_records(parsed_data)
     print(f"Generated {len(records)} records.")
 
-    headers = ["form_template_id", "form_field_id", "model_id", "code", "value", "is_image"]
+    headers = ["id", "form_template_id", "form_field_id", "model_id", "value", "created_at", "updated_at", "code", "is_image"]
 
     output_file = sys.stdout
     if len(sys.argv) > 3:
